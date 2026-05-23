@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hype-X // Code Playground</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #020202;
+    color: #e0e0e0;
+    font-family: 'Courier New', 'Lucida Console', monospace;
+    overflow: hidden;
+    height: 100vh;
+    width: 100vw;
+  }
+  
+  #matrix {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100vw; height: 100vh;
+    z-index: 0;
+  }
+  
+  #app {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    pointer-events: none;
+  }
+  #app > * { pointer-events: auto; }
+  
+  .top-bar {
+    background: rgba(5, 5, 5, 0.92);
+    border-bottom: 1px solid #330000;
+    padding: 10px 15px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .brand-area {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+  }
+  
+  /* ===== ANIMATED HYPE-X LOGO ===== */
+  .brand-box {
+    position: relative;
+    width: 9.7rem;
+    height: 2.2rem;
+    font-family: 'Courier New', 'Lucida Console', monospace;
+    font-size: 1.4rem;
+    font-weight: bold;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    pointer-events: none;
+    user-select: none;
+    flex-shrink: 0;
+  }
+  .brand-box span {
+    position: absolute;
+    top: 0;
+    display: inline-block;
+    will-change: transform, opacity;
+  }
+  .gt   { left: 0;       color: #ff4444; }
+  .h    { left: 1.05rem;  color: #ffffff; }
+  .y    { left: 2.1rem;   color: #ffffff; }
+  .p    { left: 3.15rem;  color: #ffffff; }
+  .e    { left: 4.2rem;   color: #ffffff; }
+  .dash { left: 5.25rem;  color: #ffffff; }
+  .x    { left: 6.3rem;   color: #ff1a1a; text-shadow: 0 0 10px #ff0000, 0 0 20px #990000; }
+
+  /* 12s perfect loop */
+  .gt { animation: loopGt 12s ease-in-out infinite; }
+  @keyframes loopGt {
+    0%, 3%   { opacity: 0; }
+    6%, 94%  { opacity: 1; }
+    97%, 100% { opacity: 0; }
+  }
+  .dash { animation: loopDash 12s ease-in-out infinite; }
+  @keyframes loopDash {
+    0%, 10%   { opacity: 1; transform: translateX(0); }
+    15%, 85%  { opacity: 0; transform: translateX(1.75rem) scale(0.7); }
+    90%, 100% { opacity: 1; transform: translateX(0); }
+  }
+  .e { animation: loopE 12s ease-in-out infinite; }
+  @keyframes loopE {
+    0%, 15%   { opacity: 1; transform: translateX(0); }
+    20%, 80%  { opacity: 0; transform: translateX(1.75rem) scale(0.7); }
+    85%, 100% { opacity: 1; transform: translateX(0); }
+  }
+  .p { animation: loopP 12s ease-in-out infinite; }
+  @keyframes loopP {
+    0%, 20%   { opacity: 1; transform: translateX(0); }
+    25%, 75%  { opacity: 0; transform: translateX(1.75rem) scale(0.7); }
+    80%, 100% { opacity: 1; transform: translateX(0); }
+  }
+  .y { animation: loopY 12s ease-in-out infinite; }
+  @keyframes loopY {
+    0%, 25%   { opacity: 1; transform: translateX(0); }
+    30%, 70%  { opacity: 0; transform: translateX(1.75rem) scale(0.7); }
+    75%, 100% { opacity: 1; transform: translateX(0); }
+  }
+  .h { animation: loopH 12s ease-in-out infinite; }
+  @keyframes loopH {
+    0%, 30%   { opacity: 1; transform: translateX(0); }
+    35%, 65%  { opacity: 0; transform: translateX(1.75rem) scale(0.7); }
+    70%, 100% { opacity: 1; transform: translateX(0); }
+  }
+  .x { animation: loopX 12s ease-in-out infinite; }
+  @keyframes loopX {
+    0%, 8%    { transform: translateX(0) rotate(0deg); }
+    42%       { transform: translateX(-5.25rem) rotate(-360deg); text-shadow: 0 0 20px #ff0000, 0 0 50px #990000, 0 0 100px rgba(255,0,0,0.4); }
+    55%       { transform: translateX(-5.25rem) rotate(-360deg); }
+    92%       { transform: translateX(0) rotate(0deg); text-shadow: 0 0 10px #ff0000, 0 0 20px #990000; }
+    100%      { transform: translateX(0) rotate(0deg); }
+  }
+  
+  .btn-group {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .cyber-btn {
+    background: rgba(8, 8, 8, 0.9);
+    border: 1.5px solid #ff1a1a;
+    color: #ff4444;
+    padding: 8px 18px;
+    font-family: inherit;
+    font-size: 0.75rem;
+    font-weight: bold;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.25s ease;
+    box-shadow: 0 0 8px rgba(255, 0, 0, 0.25), inset 0 0 12px rgba(255, 0, 0, 0.05);
+    border-radius: 2px;
+  }
+  .cyber-btn::before {
+    content: '';
+    position: absolute;
+    top: 0; left: -100%;
+    width: 100%; height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 0, 0, 0.25), transparent);
+    transition: left 0.6s ease;
+  }
+  .cyber-btn:hover {
+    background: rgba(255, 0, 0, 0.12);
+    color: #ff0000;
+    border-color: #ff0000;
+    box-shadow: 0 0 20px rgba(255, 0, 0, 0.5), inset 0 0 20px rgba(255, 0, 0, 0.15);
+    text-shadow: 0 0 8px #ff0000;
+    transform: translateY(-1px);
+  }
+  .cyber-btn:hover::before { left: 100%; }
+  .cyber-btn:active { transform: translateY(1px) scale(0.98); }
+  .cyber-btn.secondary {
+    border-color: #660000;
+    color: #ff6666;
+    font-size: 0.7rem;
+    padding: 6px 14px;
+  }
+  .cyber-btn.secondary:hover {
+    border-color: #ff1a1a;
+    color: #ff0000;
+  }
+  
+  .workspace {
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+  }
+  
+  .sidebar {
+    width: 160px;
+    background: rgba(5, 5, 5, 0.85);
+    border-right: 1px solid #330000;
+    display: flex;
+    flex-direction: column;
+  }
+  .tabs {
+    display: flex;
+    flex-direction: column;
+    padding: 10px 0;
+  }
+  .tab {
+    padding: 12px 15px;
+    color: #ff6666;
+    font-size: 0.8rem;
+    letter-spacing: 2px;
+    cursor: pointer;
+    border-left: 3px solid transparent;
+    transition: all 0.2s;
+    text-transform: uppercase;
+  }
+  .tab:hover, .tab.active {
+    background: rgba(255, 0, 0, 0.08);
+    border-left-color: #ff0000;
+    color: #ff0000;
+    text-shadow: 0 0 8px rgba(255, 0, 0, 0.5);
+  }
+  
+  .projects-panel {
+    flex: 1;
+    padding: 10px;
+    overflow-y: auto;
+    display: none;
+  }
+  .projects-panel.active { display: block; }
+  .projects-panel h3 {
+    color: #ff0000;
+    font-size: 0.85rem;
+    letter-spacing: 2px;
+    margin-bottom: 10px;
+    text-shadow: 0 0 5px rgba(255,0,0,0.4);
+  }
+  .project-item {
+    background: rgba(255, 0, 0, 0.05);
+    border: 1px solid #330000;
+    padding: 8px 10px;
+    margin-bottom: 6px;
+    color: #ff8888;
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    border-radius: 2px;
+  }
+  .project-item:hover {
+    background: rgba(255, 0, 0, 0.12);
+    border-color: #ff0000;
+    color: #ffdddd;
+  }
+  .project-item .proj-name { font-weight: bold; display: block; margin-bottom: 2px; }
+  .project-item .proj-date { font-size: 0.65rem; color: #994444; }
+  
+  .editor-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+  }
+  .editor-wrap {
+    flex: 1;
+    display: flex;
+    background: rgba(3, 3, 3, 0.88);
+  }
+  .line-numbers {
+    width: 45px;
+    background: rgba(8, 8, 8, 0.9);
+    color: #660000;
+    text-align: right;
+    padding: 10px 8px;
+    font-size: 0.85rem;
+    line-height: 1.6;
+    border-right: 1px solid #220000;
+    user-select: none;
+  }
+  .editor {
+    flex: 1;
+    background: transparent;
+    color: #ffaaaa;
+    border: none;
+    outline: none;
+    padding: 10px;
+    font-family: 'Courier New', monospace;
+    font-size: 0.85rem;
+    line-height: 1.6;
+    resize: none;
+    white-space: pre;
+    overflow: auto;
+  }
+  
+  /* Preview pane + fullscreen modes */
+  .preview {
+    flex: 1;
+    border-left: 1px solid #330000;
+    background: rgba(3, 3, 3, 0.9);
+    position: relative;
+  }
+  .preview iframe {
+    width: 100%; height: 100%;
+    border: none;
+    display: block;
+  }
+  /* Browser API fullscreen */
+  .preview:fullscreen,
+  .preview:-webkit-full-screen {
+    width: 100vw !important;
+    height: 100vh !important;
+    position: fixed !important;
+    top: 0 !important; left: 0 !important;
+    border: none !important;
+    background: #000 !important;
+    z-index: 9999 !important;
+  }
+  .preview:fullscreen iframe,
+  .preview:-webkit-full-screen iframe {
+    width: 100% !important;
+    height: 100% !important;
+    border: none !important;
+    display: block !important;
+  }
+  /* Fallback maximized mode */
+  .preview.maximized {
+    position: fixed !important;
+    top: 0 !important; left: 0 !important;
+    width: 100vw !important; height: 100vh !important;
+    z-index: 9999 !important;
+    border: none !important;
+    background: #000 !important;
+  }
+  .preview.maximized iframe {
+    width: 100% !important;
+    height: 100% !important;
+    border: none !important;
+    display: block !important;
+  }
+</style>
+</head>
+<body>
+
+<<canvas id="matrix"></canvas>
+
+<div id="app">
+  <div class="top-bar">
+    <div class="brand-area">
+      <div class="brand-box">
+        <span class="gt">&gt;</span>
+        <span class="h">H</span>
+        <span class="y">Y</span>
+        <span class="p">P</span>
+        <span class="e">E</span>
+        <span class="dash">-</span>
+        <span class="x">X</span>
+      </div>
+    </div>
+    <div class="btn-group">
+      <button class="cyber-btn secondary" onclick="newProject()">+ NEW PROJECT</button>
+      <button class="cyber-btn" onclick="snapshot()">[ SNAPSHOT ]</button>
+      <button class="cyber-btn" onclick="exportJSON()">↓ EXPORT JSON</button>
+      <button class="cyber-btn" onclick="importJSON()">↑ IMPORT JSON</button>
+      <button class="cyber-btn secondary" onclick="toggleFullscreen()" id="fsBtn">[ ] FULLSCREEN</button>
+    </div>
+  </div>
+  
+  <div class="workspace">
+    <div class="sidebar">
+      <div class="tabs">
+        <div class="tab" onclick="switchTab('html5',this)">HTML5</div>
+        <div class="tab" onclick="switchTab('css3',this)">CSS3</div>
+        <div class="tab" onclick="switchTab('js',this)">JAVASCRIPT</div>
+        <div class="tab active" onclick="switchTab('mixed',this)">MIXED</div>
+        <div class="tab" onclick="showProjects(this)">PROJECTS</div>
+      </div>
+      
+      <div class="projects-panel" id="projectsPanel">
+        <h3>// SAVED PROJECTS</h3>
+        <div id="projectList"></div>
+      </div>
+    </div>
+    
+    <div class="editor-area" id="editorArea">
+      <div class="editor-wrap">
+        <div class="line-numbers" id="lineNums">1<br>2<br>3<br>4<br>5<br>6<br>7<br>8<br>9<br>10</div>
+        <textarea class="editor" id="editor" spellcheck="false" placeholder="// Hype-X Editor Ready..."></textarea>
+      </div>
+    </div>
+    
+    <div class="preview" id="previewPane">
+      <iframe id="livePreview"></iframe>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===== POLISHED RED MATRIX RAIN =====
+const canvas = document.getElementById('matrix');
+const ctx = canvas.getContext('2d');
+
+let width, height;
+function resize() {
+  width = canvas.width = window.innerWidth;
+  height = canvas.height = window.innerHeight;
+}
+window.addEventListener('resize', () => { resize(); init(); });
+resize();
+
+const chars = '01アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン';
+const fontSize = 10;
+const fallSpeed = 0.3;
+const changeRate = 0.12;
+
+let columns, drops = [], currentChars = [], changeTimers = [];
+
+function init() {
+  columns = Math.floor(width / fontSize);
+  drops = []; currentChars = []; changeTimers = [];
+  for (let i = 0; i < columns; i++) {
+    drops[i] = Math.random() * -300;
+    currentChars[i] = chars[Math.floor(Math.random() * chars.length)];
+    changeTimers[i] = Math.floor(Math.random() * 20);
+  }
+}
+init();
+
+const redTones = ['#ff0000','#ff1a1a','#ff3333','#ff4d4d','#cc0000','#b30000','#990000','#660000'];
+
+function draw() {
+  ctx.fillStyle = 'rgba(2, 2, 2, 0.045)';
+  ctx.fillRect(0, 0, width, height);
+  ctx.font = fontSize + 'px monospace';
+
+  for (let i = 0; i < drops.length; i++) {
+    changeTimers[i]++;
+    if (Math.random() < changeRate || changeTimers[i] > 45) {
+      currentChars[i] = chars[Math.floor(Math.random() * chars.length)];
+      changeTimers[i] = 0;
+    }
+    const text = currentChars[i];
+    const x = i * fontSize;
+    const y = drops[i] * fontSize;
+    if (y < -fontSize) { drops[i] += fallSpeed; continue; }
+    
+    ctx.shadowBlur = 8;
+    ctx.shadowColor = '#ff2222';
+    ctx.fillStyle = '#ffdddd';
+    ctx.fillText(text, x, y);
+    
+    ctx.shadowBlur = 3;
+    ctx.shadowColor = '#aa0000';
+    ctx.fillStyle = redTones[Math.floor(Math.random() * redTones.length)];
+    ctx.fillText(text, x, y + fontSize * 0.6);
+    ctx.shadowBlur = 0;
+
+    drops[i] += fallSpeed;
+    if (y > height && Math.random() > 0.995) {
+      drops[i] = Math.random() * -50;
+    }
+  }
+  requestAnimationFrame(draw);
+}
+draw();
+
+// ===== HYPE-X APP LOGIC =====
+const editor = document.getElementById('editor');
+const lineNums = document.getElementById('lineNums');
+const preview = document.getElementById('livePreview');
+const modeDisplay = document.getElementById('mode-display');
+const projectsPanel = document.getElementById('projectsPanel');
+const editorArea = document.getElementById('editorArea');
+const previewPane = document.getElementById('previewPane');
+
+let currentMode = 'mixed';
+let currentProject = null;
+
+function switchTab(mode, el) {
+  currentMode = mode;
+  if (modeDisplay) modeDisplay.textContent = mode.toUpperCase();
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  projectsPanel.classList.remove('active');
+  editorArea.style.display = 'flex';
+  previewPane.style.display = 'block';
+  
+  const saved = localStorage.getItem('hypex_' + mode);
+  editor.value = saved || '';
+  updateLines();
+  runPreview();
+}
+
+function showProjects(el) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  projectsPanel.classList.add('active');
+  editorArea.style.display = 'none';
+  previewPane.style.display = 'none';
+  loadProjectList();
+}
+
+function loadProjectList() {
+  const list = document.getElementById('projectList');
+  list.innerHTML = '';
+  
+  const projects = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key && key.startsWith('hypex_snapshot_')) {
+      const timestamp = key.replace('hypex_snapshot_', '');
+      const date = new Date(parseInt(timestamp));
+      projects.push({ key, date, name: 'Snapshot ' + date.toLocaleString() });
+    }
+  }
+  
+  const named = localStorage.getItem('hypex_projects');
+  if (named) {
+    try {
+      const p = JSON.parse(named);
+      p.forEach(proj => projects.push({ key: 'proj_' + proj.id, date: new Date(proj.date), name: proj.name }));
+    } catch(e) {}
+  }
+  
+  if (projects.length === 0) {
+    list.innerHTML = '<div style="color:#660000;font-size:0.75rem;padding:10px;">// NO PROJECTS SAVED</div>';
+    return;
+  }
+  
+  projects.sort((a,b) => b.date - a.date);
+  projects.forEach(p => {
+    const div = document.createElement('div');
+    div.className = 'project-item';
+    div.innerHTML = `<span class="proj-name">${p.name}</span><span class="proj-date">${p.date.toLocaleString()}</span>`;
+    div.onclick = () => loadProject(p.key);
+    list.appendChild(div);
+  });
+}
+
+function loadProject(key) {
+  if (key.startsWith('hypex_snapshot_')) {
+    const data = JSON.parse(localStorage.getItem(key));
+    Object.keys(data).forEach(k => localStorage.setItem('hypex_' + k, data[k]));
+    flashStatus('PROJECT LOADED');
+    const mixedTab = document.querySelectorAll('.tab')[3];
+    switchTab('mixed', mixedTab);
+  }
+}
+
+function newProject() {
+  if (!confirm('Start new project? Unsaved changes will be cleared.')) return;
+  ['html5','css3','js','mixed'].forEach(m => localStorage.removeItem('hypex_' + m));
+  editor.value = '';
+  updateLines();
+  runPreview();
+  currentProject = null;
+  flashStatus('NEW PROJECT CREATED');
+}
+
+function updateLines() {
+  const lines = editor.value.split('\n').length;
+  lineNums.innerHTML = Array.from({length: Math.max(lines, 10)}, (_, i) => i + 1).join('<br>');
+}
+
+editor.addEventListener('input', () => {
+  updateLines();
+  localStorage.setItem('hypex_' + currentMode, editor.value);
+  runPreview();
+});
+
+function runPreview() {
+  const code = editor.value;
+  if (!code.trim()) return;
+  
+  let html = code;
+  if (currentMode === 'css3') {
+    html = `<style>${code}</style><div style="color:#ff5555;padding:20px;font-family:monospace;">CSS Preview Active</div>`;
+  } else if (currentMode === 'js') {
+    html = `<script>${code}<\/script><div style="color:#ff5555;padding:20px;font-family:monospace;">JS Executed</div>`;
+  }
+  preview.srcdoc = html;
+}
+
+function snapshot() {
+  const data = {};
+  ['html5','css3','js','mixed'].forEach(m => {
+    data[m] = localStorage.getItem('hypex_' + m) || '';
+  });
+  localStorage.setItem('hypex_snapshot_' + Date.now(), JSON.stringify(data));
+  flashStatus('SNAPSHOT SAVED');
+}
+
+function exportJSON() {
+  const data = {};
+  ['html5','css3','js','mixed'].forEach(m => {
+    data[m] = localStorage.getItem('hypex_' + m) || '';
+  });
+  const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'hype-x-backup.json';
+  a.click();
+  flashStatus('EXPORTED JSON');
+}
+
+function importJSON() {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.json';
+  input.onchange = e => {
+    const file = e.target.files[0];
+    const reader = new FileReader();
+    reader.onload = evt => {
+      const data = JSON.parse(evt.target.result);
+      Object.keys(data).forEach(k => localStorage.setItem('hypex_' + k, data[k]));
+      flashStatus('IMPORTED JSON');
+      const saved = localStorage.getItem('hypex_' + currentMode);
+      if (saved) { editor.value = saved; updateLines(); runPreview(); }
+    };
+    reader.readAsText(file);
+  };
+  input.click();
+}
+
+// FIXED: Fullscreen now targets the preview pane
+function toggleFullscreen() {
+  const previewEl = document.getElementById('previewPane');
+  const btn = document.getElementById('fsBtn');
+  
+  if (!document.fullscreenElement && !previewEl.classList.contains('maximized')) {
+    previewEl.requestFullscreen().catch(() => {
+      previewEl.classList.add('maximized');
+    });
+    btn.textContent = '[X] EXIT FULL';
+  } else {
+    if (document.fullscreenElement) document.exitFullscreen();
+    previewEl.classList.remove('maximized');
+    btn.textContent = '[ ] FULLSCREEN';
+  }
+}
+
+document.addEventListener('fullscreenchange', () => {
+  const btn = document.getElementById('fsBtn');
+  const previewEl = document.getElementById('previewPane');
+  if (document.fullscreenElement) {
+    btn.textContent = '[X] EXIT FULL';
+  } else {
+    btn.textContent = '[ ] FULLSCREEN';
+    previewEl.classList.remove('maximized');
+  }
+});
+
+function flashStatus(msg) {
+  const sys = document.querySelector('.system-text');
+  if (!sys) return;
+  const orig = sys.innerHTML;
+  sys.innerHTML = '● ' + msg;
+  sys.style.color = '#ffffff';
+  setTimeout(() => {
+    sys.innerHTML = orig;
+    sys.style.color = '#ff4444';
+  }, 1500);
+}
+
+updateLines();
+</script>
+
+</body>
+</html>
