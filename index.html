@@ -215,7 +215,7 @@
     text-shadow: 0 0 8px rgba(255, 0, 0, 0.5);
   }
   
-  .projects  .projects-panel {
+  .projects-panel {
     flex: 1;
     padding: 10px;
     overflow-y: auto;
@@ -330,7 +330,8 @@
     display: block !important;
   }
 
-  .pulse-view {
+  /* AURA additions */
+  .aura-view {
     flex: 1;
     display: none;
     flex-direction: column;
@@ -339,7 +340,7 @@
     border-left: 1px solid #330000;
     position: relative;
   }
-  .pulse-controls {
+  .aura-controls {
     display: flex;
     gap: 10px;
     padding: 10px;
@@ -348,8 +349,8 @@
     align-items: center;
     background: rgba(5, 5, 5, 0.9);
   }
-  .pulse-controls input[type="file"],
-  .pulse-controls select {
+  .aura-controls input[type="file"],
+  .aura-controls select {
     background: #0a0a0a;
     border: 1px solid #ff1a1a;
     color: #ff4444;
@@ -358,15 +359,23 @@
     font-size: 0.75rem;
     cursor: pointer;
   }
-  .pulse-controls select {
+  .aura-controls select {
     padding: 5px 8px;
   }
-  #pulse-canvas {
+  #aura-canvas {
     flex: 1;
     width: 100%;
     display: block;
   }
 </style>
+<script src="js/three.min.js"></script>
+<script>
+if (typeof THREE === 'undefined') {
+  var s = document.createElement('script');
+  s.src = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js';
+  document.head.appendChild(s);
+}
+</script>
 </head>
 <body>
 
@@ -404,7 +413,7 @@
         <div class="tab" onclick="switchTab('js',this)">JAVASCRIPT</div>
         <div class="tab active" onclick="switchTab('mixed',this)">MIXED</div>
         <div class="tab" onclick="showProjects(this)">PROJECTS</div>
-        <div class="tab" onclick="showPulse(this)">PULSE</div>
+        <div class="tab" onclick="showAura(this)">AURA</div>
       </div>
       
       <div class="projects-panel" id="projectsPanel">
@@ -424,21 +433,19 @@
       <iframe id="livePreview"></iframe>
     </div>
 
-    <div class="pulse-view" id="pulseView">
-      <div class="pulse-controls">
+    <div class="aura-view" id="auraView">
+      <div class="aura-controls">
         <input type="file" id="audio-file" accept="audio/*">
-        <button class="cyber-btn secondary" onclick="pulseMic()">MIC</button>
-        <button class="cyber-btn secondary" onclick="pulseSynth()">SYNTH</button>
-        <select id="pulse-mode" onchange="pulseSetMode(this.value)">
-          <option value="neon">Neon Spectrum</option>
-          <option value="circle">Circular Wave</option>
-          <option value="storm">Particle Storm</option>
-          <option value="wave">Waveform</option>
+        <button class="cyber-btn secondary" onclick="auraUseMic()">MIC</button>
+        <button class="cyber-btn secondary" onclick="auraUseSynth()">SYNTH</button>
+        <select id="aura-mode" onchange="auraSetMode(this.value)">
+          <option value="tree">Tree of Seasons</option>
+          <option value="dream">Dreamscape</option>
         </select>
-        <button class="cyber-btn secondary" onclick="pulsePlay()">PLAY</button>
-        <button class="cyber-btn secondary" onclick="pulseStop()">STOP</button>
+        <button class="cyber-btn secondary" onclick="auraPlay()">PLAY</button>
+        <button class="cyber-btn secondary" onclick="auraStop()">STOP</button>
       </div>
-      <canvas id="pulse-canvas"></canvas>
+      <canvas id="aura-canvas"></canvas>
     </div>
   </div>
 </div>
@@ -517,7 +524,7 @@ const preview = document.getElementById('livePreview');
 const projectsPanel = document.getElementById('projectsPanel');
 const editorArea = document.getElementById('editorArea');
 const previewPane = document.getElementById('previewPane');
-const pulseView = document.getElementById('pulseView');
+const auraView = document.getElementById('auraView');
 const systemText = document.getElementById('systemText');
 
 let currentMode = 'mixed';
@@ -531,10 +538,8 @@ function switchTab(mode, el) {
   projectsPanel.classList.remove('active');
   editorArea.style.display = 'flex';
   previewPane.style.display = 'block';
-  pulseView.style.display = 'none';
- Pane.style.display = 'block';
-  pulseView.style.display = 'none';
-  if(window.pulseApp && window.pulseApp.stop) window.pulseApp.stop();
+  auraView.style.display = 'none';
+  if(window.auraApp && window.auraApp.stop) window.auraApp.stop();
   
   const saved = localStorage.getItem('hypex_' + mode);
   editor.value = saved || '';
@@ -548,20 +553,20 @@ function showProjects(el) {
   projectsPanel.classList.add('active');
   editorArea.style.display = 'none';
   previewPane.style.display = 'none';
-  pulseView.style.display = 'none';
-  if(window.pulseApp && window.pulseApp.stop) window.pulseApp.stop();
+  auraView.style.display = 'none';
+  if(window.auraApp && window.auraApp.stop) window.auraApp.stop();
   loadProjectList();
 }
 
-function showPulse(el) {
+function showAura(el) {
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   el.classList.add('active');
   projectsPanel.classList.remove('active');
   editorArea.style.display = 'none';
   previewPane.style.display = 'none';
-  pulseView.style.display = 'flex';
-  if(window.pulseApp && window.pulseApp.start) window.pulseApp.start();
-  flashStatus('PULSE ACTIVE');
+  auraView.style.display = 'flex';
+  if(window.auraApp && window.auraApp.start) window.auraApp.start();
+  flashStatus('AURA ACTIVE');
 }
 
 function loadProjectList() {
@@ -741,36 +746,49 @@ document.addEventListener('keydown', function(e) {
   }
 });
 
-/* PULSE Audio Visualizer */
-window.pulseApp = (function(){
-  const canvas = document.getElementById('pulse-canvas');
-  const ctx = canvas.getContext('2d');
-  let w, h, animationId, mode = 'neon';
-  let audioCtx, analyser, source, gainNode, isPlaying = false;
-  let freqData, waveData, particles = [], time = 0;
+/* AURA Visualizer */
+window.auraApp = (function(){
+  let scene, camera, renderer, analyser, dataArray, audioCtx, source, gainNode;
+  let animationId, mode = 'tree', isPlaying = false, initialized = false;
+  let treeGroup, dreamMesh, particles;
+  const canvas = document.getElementById('aura-canvas');
 
-  function resize(){
-    const parent = canvas.parentElement;
-    w = canvas.width = parent.clientWidth;
-    h = canvas.height = parent.clientHeight;
+  function init(){
+    if(!window.THREE){ console.error('Three.js not loaded'); return false; }
+    if(initialized) return true;
+    scene = new THREE.Scene();
+    camera = new THREE.PerspectiveCamera(75, 1, 0.1, 1000);
+    camera.position.z = 30;
+    renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, alpha: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    window.addEventListener('resize', onResize);
+    initialized = true;
+    return true;
   }
-
+  
+  function onResize(){
+    if(!camera || !renderer || !canvas) return;
+    const parent = canvas.parentElement;
+    const w = parent.clientWidth, h = parent.clientHeight;
+    canvas.width = w; canvas.height = h;
+    camera.aspect = w / h; camera.updateProjectionMatrix();
+    renderer.setSize(w, h);
+  }
+  
   function initAudio(){
-    if(!audioCtx) audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+    if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     if(audioCtx.state === 'suspended') audioCtx.resume();
   }
-
-  function getAnalyser(){
+  
+  function createAnalyser(){
     initAudio();
-    if(!analyser){
-      analyser = audioCtx.createAnalyser();
-      analyser.fftSize = 2048;
-    }
-    freqData = new Uint8Array(analyser.frequencyBinCount);
-    waveData = new Uint8Array(analyser.frequencyBinCount);
+    if(analyser) analyser.disconnect();
+    analyser = audioCtx.createAnalyser();
+    analyser.fftSize = 512;
+    dataArray = new Uint8Array(analyser.frequencyBinCount);
     return analyser;
   }
-
+  
   function loadFile(file){
     initAudio();
     const reader = new FileReader();
@@ -780,24 +798,24 @@ window.pulseApp = (function(){
         source = audioCtx.createBufferSource();
         source.buffer = buffer; source.loop = true;
         gainNode = audioCtx.createGain(); gainNode.gain.value = 0.8;
-        const a = getAnalyser();
+        const a = createAnalyser();
         source.connect(a); a.connect(gainNode); gainNode.connect(audioCtx.destination);
         source.start(0); isPlaying = true;
       });
     };
     reader.readAsArrayBuffer(file);
   }
-
+  
   function useMic(){
     initAudio();
-    navigator.mediaDevices.getUserMedia({audio:true}).then(stream=>{
+    navigator.mediaDevices.getUserMedia({ audio: true }).then(stream=>{
       stopAudio();
       source = audioCtx.createMediaStreamSource(stream);
-      getAnalyser(); source.connect(analyser);
+      createAnalyser(); source.connect(analyser);
       isPlaying = true;
-    }).catch(err=>alert('Mic denied: '+err.message));
+    }).catch(err=>alert('Mic access denied: ' + err.message));
   }
-
+  
   function useSynth(){
     initAudio(); stopAudio();
     const osc = audioCtx.createOscillator();
@@ -806,192 +824,140 @@ window.pulseApp = (function(){
     lfo.connect(lfoGain); lfoGain.connect(osc.frequency);
     osc.type = 'sawtooth'; osc.frequency.value = 55;
     gainNode = audioCtx.createGain(); gainNode.gain.value = 0.15;
-    const a = getAnalyser();
+    const a = createAnalyser();
     osc.connect(a); a.connect(gainNode); gainNode.connect(audioCtx.destination);
     osc.start(); lfo.start();
-    source = {stop:()=>{osc.stop();lfo.stop();},disconnect:()=>{}};
+    source = { stop: ()=>{ osc.stop(); lfo.stop(); }, disconnect: ()=>{} };
     isPlaying = true;
   }
-
+  
   function stopAudio(){
     if(source && source.stop) source.stop();
     if(source && source.disconnect) source.disconnect();
     source = null; isPlaying = false;
   }
-
-  function getBass(){
-    if(!freqData || !isPlaying) return 0;
-    let sum = 0;
-    for(let i=0;i<<20;i++) sum += freqData[i];
-    return (sum/20)/255;
+  
+  function clearScene(){
+    if(!scene) return;
+    while(scene.children.length > 0) scene.remove(scene.children[0]);
+    treeGroup = null; dreamMesh = null; particles = null;
   }
-
-  function drawNeon(){
-    ctx.fillStyle = 'rgba(2,2,2,0.25)';
-    ctx.fillRect(0,0,w,h);
-    const bars = 80;
-    const bw = w/bars;
-    for(let i=0;i<<bars;i++){
-      const idx = Math.floor(i * freqData.length / bars);
-      const val = freqData ? freqData[idx] : 0;
-      const pct = val/255;
-      const bh = pct * h * 0.85;
-      const x = i*bw;
-      const y = h/2 - bh/2;
-
-      ctx.shadowBlur = 12;
-      ctx.shadowColor = '#ff0033';
-      const g = ctx.createLinearGradient(x, y+bh, x, y);
-      g.addColorStop(0, '#330000');
-      g.addColorStop(0.4, '#ff0033');
-      g.addColorStop(1, '#ffffff');
-      ctx.fillStyle = g;
-      ctx.fillRect(x+1, y, bw-2, bh);
-
-      ctx.globalAlpha = 0.25;
-      ctx.fillRect(x+1, h/2+bh/2, bw-2, bh*0.4);
-      ctx.globalAlpha = 1;
-      ctx.shadowBlur = 0;
-    }
+  
+  function buildParticles(count, color, size){
+    const geo = new THREE.BufferGeometry();
+    const pos = new Float32Array(count * 3);
+    for(let i = 0; i < count * 3; i++) pos[i] = (Math.random() - 0.5) * 80;
+    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    const mat = new THREE.PointsMaterial({ color: color, size: size, transparent: true, opacity: 0.7, blending: THREE.AdditiveBlending });
+    const pts = new THREE.Points(geo, mat);
+    scene.add(pts);
+    return pts;
   }
-
-  function drawCircle(){
-    ctx.fillStyle = 'rgba(2,2,2,0.15)';
-    ctx.fillRect(0,0,w,h);
-    const cx=w/2, cy=h/2;
-    const baseR = Math.min(w,h)*0.12;
-    const bars = 120;
-    const step = (Math.PI*2)/bars;
-
-    ctx.save();
-    ctx.translate(cx,cy);
-    ctx.rotate(time*0.3);
-    for(let i=0;i<<120;i++){
-      const idx = Math.floor(i * freqData.length / bars);
-      const val = freqData ? freqData[idx] : 0;
-      const pct = val/255;
-      const barH = pct * Math.min(w,h)*0.38;
-
-      ctx.save();
-      ctx.rotate(i*step);
-      ctx.shadowBlur = 8;
-      ctx.shadowColor = '#ff0033';
-      const g = ctx.createLinearGradient(0,baseR,0,baseR+barH);
-      g.addColorStop(0,'#ff0033');
-      g.addColorStop(1,'#ffffff');
-      ctx.fillStyle = g;
-      ctx.fillRect(-1.5, baseR, 3, barH);
-      ctx.shadowBlur = 0;
-      ctx.restore();
-    }
-    ctx.restore();
-
-    ctx.beginPath();
-    ctx.arc(cx,cy,baseR*0.85,0,Math.PI*2);
-    ctx.fillStyle = 'rgba(255,0,51,0.08)';
-    ctx.fill();
-    ctx.strokeStyle = 'rgba(255,0,51,0.3)';
-    ctx.lineWidth = 2;
-    ctx.stroke();
-  }
-
-  function drawStorm(){
-    ctx.fillStyle = 'rgba(2,2,2,0.12)';
-    ctx.fillRect(0,0,w,h);
-    const bass = getBass();
-
-    if(bass > 0.55 || Math.random() < 0.08){
-      const count = Math.floor(bass * 15) + 3;
-      for(let i=0;i<count;i++){
-        particles.push({
-          x: w/2, y: h/2,
-          vx: (Math.random()-0.5)*(6+bass*12),
-          vy: (Math.random()-0.5)*(6+bass*12),
-          life: 1, size: Math.random()*3+0.5,
-          color: Math.random()>0.5 ? '#ff0033' : '#ffffff'
-        });
+  
+  function buildTree(){
+    const group = new THREE.Group();
+    const mat = new THREE.MeshBasicMaterial({ color: 0xff0033, wireframe: true });
+    function branch(parent, len, depth){
+      if(depth <= 0) return;
+      const geo = new THREE.CylinderGeometry(0.1 * depth, 0.15 * depth, len, 5);
+      const mesh = new THREE.Mesh(geo, mat);
+      mesh.position.y = len / 2;
+      parent.add(mesh);
+      for(let i = 0; i < 2; i++){
+        const sub = new THREE.Group();
+        sub.position.y = len;
+        sub.rotation.z = (i === 0 ? 1 : -1) * (0.3 + Math.random() * 0.3);
+        sub.rotation.x = Math.random() * 0.3;
+        mesh.add(sub);
+        branch(sub, len * 0.75, depth - 1);
       }
     }
-
-    for(let i=particles.length-1;i>=0;i--){
-      const p = particles[i];
-      p.x += p.vx; p.y += p.vy;
-      p.life -= 0.012;
-      p.vx *= 0.97; p.vy *= 0.97;
-      if(p.life <= 0){ particles.splice(i,1); continue; }
-
-      ctx.shadowBlur = 10;
-      ctx.shadowColor = p.color;
-      const alpha = p.life;
-      ctx.fillStyle = p.color === '#ffffff' ? 'rgba(255,255,255,'+alpha+')' : 'rgba(255,0,51,'+alpha+')';
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, p.size, 0, Math.PI*2);
-      ctx.fill();
-      ctx.shadowBlur = 0;
+    const root = new THREE.Group();
+    branch(root, 7, 7);
+    root.rotation.x = Math.PI; root.position.y = -12;
+    group.add(root);
+    scene.add(group);
+    return group;
+  }
+  
+  function setMode(m){
+    mode = m; clearScene();
+    particles = buildParticles(4000, 0xff0033, 0.15);
+    if(mode === 'tree'){ treeGroup = buildTree(); }
+    else {
+      const geo = new THREE.IcosahedronGeometry(10, 3);
+      const mat = new THREE.MeshBasicMaterial({ color: 0xff0033, wireframe: true, transparent: true, opacity: 0.25 });
+      dreamMesh = new THREE.Mesh(geo, mat);
+      scene.add(dreamMesh);
     }
   }
-
-  function drawWaveform(){
-    ctx.fillStyle = 'rgba(2,2,2,0.2)';
-    ctx.fillRect(0,0,w,h);
-    if(!waveData) return;
-
-    const slice = w / waveData.length;
-    for(let layer=0; layer<<3; layer++){
-      ctx.beginPath();
-      ctx.shadowBlur = 6 - layer;
-      ctx.shadowColor = '#ff0033';
-      ctx.strokeStyle = layer===0 ? '#ffffff' : 'rgba(255,0,51,'+(0.6-layer*0.15)+')';
-      ctx.lineWidth = 2-layer*0.4;
-
-      for(let i=0;i<<waveData.length;i++){
-        const v = waveData[i]/128.0;
-        const y = (v * h/2) + (layer*15*Math.sin(i*0.03+time*2));
-        const x = i*slice;
-        if(i===0) ctx.moveTo(x,y);
-        else ctx.lineTo(x,y);
-      }
-      ctx.stroke();
-      ctx.shadowBlur = 0;
-    }
-  }
-
+  
+  let time = 0;
   function animate(){
     animationId = requestAnimationFrame(animate);
-    time += 0.016;
-    resize();
-
-    if(analyser && isPlaying){
-      analyser.getByteFrequencyData(freqData);
-      analyser.getByteTimeDomainData(waveData);
+    time += 0.01;
+    let bass = 0, mid = 0, treble = 0;
+    if(analyser && isPlaying && dataArray){
+      analyser.getByteFrequencyData(dataArray);
+      const len = dataArray.length;
+      for(let i = 0; i < len; i++){
+        if(i < len * 0.1) bass += dataArray[i];
+        else if(i < len * 0.5) mid += dataArray[i];
+        else treble += dataArray[i];
+      }
+      bass = (bass / (len * 0.1)) / 255;
+      mid = (mid / (len * 0.4)) / 255;
+      treble = (treble / (len * 0.5)) / 255;
     }
-
-    if(mode==='neon') drawNeon();
-    else if(mode==='circle') drawCircle();
-    else if(mode==='storm') drawStorm();
-    else if(mode==='wave') drawWaveform();
+    if(mode === 'tree' && treeGroup){
+      treeGroup.rotation.y += 0.003 + bass * 0.03;
+      treeGroup.children[0].rotation.z = Math.sin(time) * 0.1 * (1 + mid);
+      if(particles){
+        particles.rotation.y -= 0.002;
+        const pos = particles.geometry.attributes.position.array;
+        for(let i = 1; i < pos.length; i += 3){
+          pos[i] += Math.sin(time * 2 + pos[i - 1] * 0.1) * 0.03 * (0.5 + treble);
+        }
+        particles.geometry.attributes.position.needsUpdate = true;
+      }
+    } else if(dreamMesh){
+      dreamMesh.rotation.x += 0.004 + bass * 0.02;
+      dreamMesh.rotation.y += 0.006 + mid * 0.02;
+      const s = 1 + treble * 0.5;
+      dreamMesh.scale.set(s, s, s);
+      if(particles){ particles.rotation.y += 0.003; particles.rotation.x = Math.sin(time * 0.5) * 0.2; }
+    }
+    if(renderer && scene && camera) renderer.render(scene, camera);
   }
-
+  
   return {
-    start: function(){ if(!animationId) animate(); resize(); },
-    stop: function(){ cancelAnimationFrame(animationId); animationId=null; stopAudio(); },
+    start: function(){
+      if(!init()) return;
+      if(!scene.children.length) setMode(mode);
+      if(!animationId) animate();
+      setTimeout(onResize, 50);
+    },
+    stop: function(){
+      cancelAnimationFrame(animationId); animationId = null;
+      stopAudio();
+    },
     loadFile: loadFile,
     useMic: useMic,
     useSynth: useSynth,
-    setMode: function(m){ mode=m; particles=[]; },
-    play: function(){ isPlaying=true; },
+    setMode: setMode,
+    play: function(){ isPlaying = true; },
     stopAudio: stopAudio
   };
 })();
 
-function pulseMic(){ window.pulseApp.useMic(); flashStatus('PULSE MIC ON'); }
-function pulseSynth(){ window.pulseApp.useSynth(); flashStatus('PULSE SYNTH'); }
-function pulseSetMode(m){ window.pulseApp.setMode(m); flashStatus('MODE: '+m.toUpperCase()); }
-function pulsePlay(){ window.pulseApp.play(); flashStatus('PULSE PLAYING'); }
-function pulseStop(){ window.pulseApp.stopAudio(); flashStatus('PULSE STOPPED'); }
+function auraUseMic(){ window.auraApp.useMic(); flashStatus('AURA MIC ON'); }
+function auraUseSynth(){ window.auraApp.useSynth(); flashStatus('AURA SYNTH'); }
+function auraSetMode(m){ window.auraApp.setMode(m); }
+function auraPlay(){ window.auraApp.play(); flashStatus('AURA PLAYING'); }
+function auraStop(){ window.auraApp.stopAudio(); flashStatus('AURA STOPPED'); }
 
 document.getElementById('audio-file').addEventListener('change', function(e){
-  if(e.target.files[0]){ window.pulseApp.loadFile(e.target.files[0]); flashStatus('FILE LOADED'); }
+  if(e.target.files[0]){ window.auraApp.loadFile(e.target.files[0]); flashStatus('AURA FILE LOADED'); }
 });
 
 updateLines();
