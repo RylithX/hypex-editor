@@ -4,7 +4,7 @@
     function init() {
         editor = new EditorManager(fs, handleEditorEvent);
         const projects = Object.keys(fs.projects);
-        if (projects.length > 0) { fs.currentProject = projects[0]; fs.currentLang = 'html'; }
+        if (projects.length > 0) { fs.currentProject = projects[0]; fs.currentLang = 'mixed'; }
         renderProjectTabs(); setLangTabActive(fs.currentLang); editor.loadLang(fs.currentProject, fs.currentLang); bindEvents(); runPreview();
     }
     function handleEditorEvent(type) { if (type === 'save') { if (fs.saveToStorage()) flashStatus('SNAPSHOT SAVED'); } else if (type === 'run') { runPreview(); } else if (type === 'content') { clearTimeout(autoRunTimer); autoRunTimer = setTimeout(runPreview, 1000); } }
@@ -37,28 +37,38 @@
         });
     }
     function setLangTabActive(lang) { els.langTabs.querySelectorAll('.lang-tab').forEach(t => { t.classList.toggle('active', t.dataset.lang === lang); }); }
-    function createNewProject() { const name = prompt('Enter new project name:'); if (!name) return; if (fs.createProject(name)) { fs.currentProject = name; fs.currentLang = 'html'; renderProjectTabs(); setLangTabActive('html'); editor.loadLang(name, 'html'); runPreview(); } else { alert('Project already exists or name invalid!'); } }
-    function runPreview() {
+    function createNewProject() { const name = prompt('Enter new project name:'); if (!name) return; if (fs.createProject(name)) { fs.currentProject = name; fs.currentLang = 'mixed'; renderProjectTabs(); setLangTabActive('mixed'); editor.loadLang(name, 'mixed'); runPreview(); } else { alert('Project already exists or name invalid!'); } }    function runPreview() {
         if (!fs.currentProject) { els.previewFrame.srcdoc = '<p style="color:red;padding:20px;">No active project</p>'; return; }
-        const p = fs.projects[fs.currentProject];
-        let html;
+        const consoleOut = document.getElementById('console-out');
+        const frame = els.previewFrame;
+
         if (fs.currentLang === 'mixed') {
-            html = p.mixed || '';
-        } else {
-            html = p.html || ''; const css = p.css || ''; const js = p.js || '';
-            const styleTag = `<style>\n${css}\n</style>`; const scriptTag = `<script>\n${js}\n</script>`;
-            if (html.includes('</head>')) html = html.replace('</head>', styleTag + '\n</head>');
-            else if (html.includes('<head>')) html = html.replace('<head>', '<head>\n' + styleTag);
-            else if (html.includes('<html>')) html = html.replace('<html>', '<html>\n<head>' + styleTag + '\n</head>');
-            else html = '<head>' + styleTag + '</head>\n' + html;
-            if (html.includes('</body>')) html = html.replace('</body>', scriptTag + '\n</body>');
-            else if (html.includes('<body>')) html = html.replace('<body>', '<body>\n' + scriptTag);
-            else html += '\n' + scriptTag;
+            if (consoleOut) consoleOut.style.display = 'none';
+            frame.style.display = 'block';
+            frame.srcdoc = fs.projects[fs.currentProject].mixed || '';
+            return;
         }
-        els.previewFrame.srcdoc = html;
+
+        frame.style.display = 'none';
+        if (consoleOut) consoleOut.style.display = 'block';
+
+        const src = editor.getValue();
+        if (fs.currentLang === 'python') {
+            HXEngines.initPython().then(() => {
+                if (consoleOut) consoleOut.textContent = HXEngines.runPython(src);
+            });
+        } else if (fs.currentLang === 'cpp') {
+            if (consoleOut) consoleOut.textContent = HXEngines.runCPP(src);
+        } else if (fs.currentLang === 'rust') {
+            HXEngines.runRust(src).then(out => {
+                if (consoleOut) consoleOut.textContent = out;
+            });
+        } else {
+            if (consoleOut) consoleOut.textContent = 'Unknown language: ' + fs.currentLang;
+        }
     }
     function exportCurrentProject() { if (!fs.currentProject) { alert('No project selected'); return; } const data = fs.exportProject(fs.currentProject); if (!data) return; const blob = new Blob([data], { type: 'application/json' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `${fs.currentProject}-hypex.json`; document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url); flashStatus('EXPORTED .JSON'); }
-    function handleImport(e) { const file = e.target.files[0]; if (!file) return; const reader = new FileReader(); reader.onload = (event) => { const importedName = fs.importProject(event.target.result); if (importedName) { fs.currentProject = importedName; fs.currentLang = 'html'; renderProjectTabs(); setLangTabActive('html'); editor.loadLang(importedName, 'html'); runPreview(); flashStatus('IMPORTED .JSON'); } else { alert('Invalid JSON format'); } }; reader.readAsText(file); e.target.value = ''; }
+    function handleImport(e) { const file = e.target.files[0]; if (!file) return; const reader = new FileReader(); reader.onload = (event) => { const importedName = fs.importProject(event.target.result); if (importedName) { fs.currentProject = importedName; fs.currentLang = 'mixed'; renderProjectTabs(); setLangTabActive('mixed'); editor.loadLang(importedName, 'mixed'); runPreview(); flashStatus('IMPORTED .JSON'); } else { alert('Invalid JSON format'); } }; reader.readAsText(file); e.target.value = ''; }
     function flashStatus(msg) { const status = document.querySelector('.system-title'); const original = status.textContent; status.textContent = msg; status.style.color = '#00ff88'; setTimeout(() => { status.textContent = original; status.style.color = '#ff0033'; }, 2000); }
     function escapeHtml(text) { const div = document.createElement('div'); div.textContent = text; return div.innerHTML; }
     init();

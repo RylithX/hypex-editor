@@ -49,7 +49,6 @@
     gap: 15px;
   }
   
-  /* ===== ANIMATED HYPE-X LOGO ===== */
   .brand-box {
     position: relative;
     width: 9.7rem;
@@ -77,7 +76,6 @@
   .dash { left: 5.25rem;  color: #ffffff; }
   .x    { left: 6.3rem;   color: #ff1a1a; text-shadow: 0 0 10px #ff0000, 0 0 20px #990000; }
 
-  /* 12s perfect loop */
   .gt { animation: loopGt 12s ease-in-out infinite; }
   @keyframes loopGt {
     0%, 3%   { opacity: 0; }
@@ -175,6 +173,13 @@
     color: #ff0000;
   }
   
+  .system-text {
+    color: #ff4444;
+    font-size: 0.75rem;
+    letter-spacing: 1px;
+    min-width: 140px;
+  }
+  
   .workspace {
     flex: 1;
     display: flex;
@@ -251,7 +256,8 @@
   .editor-wrap {
     flex: 1;
     display: flex;
-    background: rgba(3, 3, 3, 0.88);
+    overflow: hidden;
+    min-height: 0;
   }
   .line-numbers {
     width: 45px;
@@ -263,6 +269,7 @@
     line-height: 1.6;
     border-right: 1px solid #220000;
     user-select: none;
+    overflow: hidden;
   }
   .editor {
     flex: 1;
@@ -277,9 +284,9 @@
     resize: none;
     white-space: pre;
     overflow: auto;
+    height: 100%;
   }
   
-  /* Preview pane + fullscreen modes */
   .preview {
     flex: 1;
     border-left: 1px solid #330000;
@@ -291,7 +298,6 @@
     border: none;
     display: block;
   }
-  /* Browser API fullscreen */
   .preview:fullscreen,
   .preview:-webkit-full-screen {
     width: 100vw !important;
@@ -309,7 +315,6 @@
     border: none !important;
     display: block !important;
   }
-  /* Fallback maximized mode */
   .preview.maximized {
     position: fixed !important;
     top: 0 !important; left: 0 !important;
@@ -342,9 +347,11 @@
         <span class="dash">-</span>
         <span class="x">X</span>
       </div>
+      <span class="system-text" id="systemText">● READY</span>
     </div>
     <div class="btn-group">
       <button class="cyber-btn secondary" onclick="newProject()">+ NEW PROJECT</button>
+      <button class="cyber-btn" onclick="runPreview()">[ RUN ]</button>
       <button class="cyber-btn" onclick="snapshot()">[ SNAPSHOT ]</button>
       <button class="cyber-btn" onclick="exportJSON()">↓ EXPORT JSON</button>
       <button class="cyber-btn" onclick="importJSON()">↑ IMPORT JSON</button>
@@ -371,7 +378,7 @@
     <div class="editor-area" id="editorArea">
       <div class="editor-wrap">
         <div class="line-numbers" id="lineNums">1<br>2<br>3<br>4<br>5<br>6<br>7<br>8<br>9<br>10</div>
-        <textarea class="editor" id="editor" spellcheck="false" placeholder="// Hype-X Editor Ready..."></textarea>
+        <textarea class="editor" id="editor" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off" placeholder="// Hype-X Editor Ready..."></textarea>
       </div>
     </div>
     
@@ -382,7 +389,6 @@
 </div>
 
 <script>
-// ===== POLISHED RED MATRIX RAIN =====
 const canvas = document.getElementById('matrix');
 const ctx = canvas.getContext('2d');
 
@@ -450,21 +456,20 @@ function draw() {
 }
 draw();
 
-// ===== HYPE-X APP LOGIC =====
 const editor = document.getElementById('editor');
 const lineNums = document.getElementById('lineNums');
 const preview = document.getElementById('livePreview');
-const modeDisplay = document.getElementById('mode-display');
 const projectsPanel = document.getElementById('projectsPanel');
 const editorArea = document.getElementById('editorArea');
 const previewPane = document.getElementById('previewPane');
+const systemText = document.getElementById('systemText');
 
 let currentMode = 'mixed';
 let currentProject = null;
+let runTimer = null;
 
 function switchTab(mode, el) {
   currentMode = mode;
-  if (modeDisplay) modeDisplay.textContent = mode.toUpperCase();
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   el.classList.add('active');
   projectsPanel.classList.remove('active');
@@ -517,8 +522,8 @@ function loadProjectList() {
   projects.forEach(p => {
     const div = document.createElement('div');
     div.className = 'project-item';
-    div.innerHTML = `<span class="proj-name">${p.name}</span><span class="proj-date">${p.date.toLocaleString()}</span>`;
-    div.onclick = () => loadProject(p.key);
+    div.innerHTML = '<span class="proj-name">' + p.name + '</span><span class="proj-date">' + p.date.toLocaleString() + '</span>';
+    div.onclick = function() { loadProject(p.key); };
     list.appendChild(div);
   });
 }
@@ -526,7 +531,7 @@ function loadProjectList() {
 function loadProject(key) {
   if (key.startsWith('hypex_snapshot_')) {
     const data = JSON.parse(localStorage.getItem(key));
-    Object.keys(data).forEach(k => localStorage.setItem('hypex_' + k, data[k]));
+    Object.keys(data).forEach(function(k) { localStorage.setItem('hypex_' + k, data[k]); });
     flashStatus('PROJECT LOADED');
     const mixedTab = document.querySelectorAll('.tab')[3];
     switchTab('mixed', mixedTab);
@@ -535,41 +540,52 @@ function loadProject(key) {
 
 function newProject() {
   if (!confirm('Start new project? Unsaved changes will be cleared.')) return;
-  ['html5','css3','js','mixed'].forEach(m => localStorage.removeItem('hypex_' + m));
+  ['html5','css3','js','mixed'].forEach(function(m) { localStorage.removeItem('hypex_' + m); });
   editor.value = '';
   updateLines();
-  runPreview();
+  preview.srcdoc = '';
   currentProject = null;
   flashStatus('NEW PROJECT CREATED');
 }
 
 function updateLines() {
   const lines = editor.value.split('\n').length;
-  lineNums.innerHTML = Array.from({length: Math.max(lines, 10)}, (_, i) => i + 1).join('<br>');
+  lineNums.innerHTML = Array.from({length: Math.max(lines, 10)}, function(_, i) { return i + 1; }).join('<br>');
 }
 
-editor.addEventListener('input', () => {
+editor.addEventListener('input', function() {
   updateLines();
   localStorage.setItem('hypex_' + currentMode, editor.value);
-  runPreview();
+  if (runTimer) clearTimeout(runTimer);
+  runTimer = setTimeout(runPreview, 400);
+});
+
+editor.addEventListener('scroll', function() {
+  lineNums.scrollTop = editor.scrollTop;
 });
 
 function runPreview() {
-  const code = editor.value;
-  if (!code.trim()) return;
-  
-  let html = code;
-  if (currentMode === 'css3') {
-    html = `<style>${code}</style><div style="color:#ff5555;padding:20px;font-family:monospace;">CSS Preview Active</div>`;
-  } else if (currentMode === 'js') {
-    html = `<script>${code}<\/script><div style="color:#ff5555;padding:20px;font-family:monospace;">JS Executed</div>`;
+  if (currentMode === 'mixed') {
+    preview.srcdoc = editor.value;
+    flashStatus('MIXED MODE LIVE');
+    return;
   }
-  preview.srcdoc = html;
+  
+  const html = localStorage.getItem('hypex_html5') || '';
+  const css = localStorage.getItem('hypex_css3') || '';
+  const js = localStorage.getItem('hypex_js') || '';
+  
+  const safeJS = js.replace(/<<\/script>/gi, '<\\/script>');
+  
+  const doc = '<!DOCTYPE html>\n<html lang="en">\n<head>\n<meta charset="UTF-8">\n<style>\n' + css + '\n</style>\n</head>\n<body>\n' + html + '\n<script>\n(function(){\n  try {\n    ' + safeJS + '\n  } catch(err) {\n    console.error(err);\n    var pre = document.createElement("pre");\n    pre.style.cssText = "color:#f44336;font-family:monospace;padding:12px;background:rgba(20,0,0,0.9);border:1px solid #330000;";\n    pre.textContent = "JS Runtime Error: " + err.message + "\\n" + (err.stack || "");\n    if(document.body) document.body.appendChild(pre);\n  }\n})();\n<<\/script>\n</body>\n</html>';
+  
+  preview.srcdoc = doc;
+  flashStatus('COMBINED PREVIEW LIVE');
 }
 
 function snapshot() {
   const data = {};
-  ['html5','css3','js','mixed'].forEach(m => {
+  ['html5','css3','js','mixed'].forEach(function(m) {
     data[m] = localStorage.getItem('hypex_' + m) || '';
   });
   localStorage.setItem('hypex_snapshot_' + Date.now(), JSON.stringify(data));
@@ -578,7 +594,7 @@ function snapshot() {
 
 function exportJSON() {
   const data = {};
-  ['html5','css3','js','mixed'].forEach(m => {
+  ['html5','css3','js','mixed'].forEach(function(m) {
     data[m] = localStorage.getItem('hypex_' + m) || '';
   });
   const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
@@ -593,12 +609,12 @@ function importJSON() {
   const input = document.createElement('input');
   input.type = 'file';
   input.accept = '.json';
-  input.onchange = e => {
+  input.onchange = function(e) {
     const file = e.target.files[0];
     const reader = new FileReader();
-    reader.onload = evt => {
+    reader.onload = function(evt) {
       const data = JSON.parse(evt.target.result);
-      Object.keys(data).forEach(k => localStorage.setItem('hypex_' + k, data[k]));
+      Object.keys(data).forEach(function(k) { localStorage.setItem('hypex_' + k, data[k]); });
       flashStatus('IMPORTED JSON');
       const saved = localStorage.getItem('hypex_' + currentMode);
       if (saved) { editor.value = saved; updateLines(); runPreview(); }
@@ -608,13 +624,12 @@ function importJSON() {
   input.click();
 }
 
-// FIXED: Fullscreen now targets the preview pane
 function toggleFullscreen() {
   const previewEl = document.getElementById('previewPane');
   const btn = document.getElementById('fsBtn');
   
   if (!document.fullscreenElement && !previewEl.classList.contains('maximized')) {
-    previewEl.requestFullscreen().catch(() => {
+    previewEl.requestFullscreen().catch(function() {
       previewEl.classList.add('maximized');
     });
     btn.textContent = '[X] EXIT FULL';
@@ -625,7 +640,7 @@ function toggleFullscreen() {
   }
 }
 
-document.addEventListener('fullscreenchange', () => {
+document.addEventListener('fullscreenchange', function() {
   const btn = document.getElementById('fsBtn');
   const previewEl = document.getElementById('previewPane');
   if (document.fullscreenElement) {
@@ -637,18 +652,24 @@ document.addEventListener('fullscreenchange', () => {
 });
 
 function flashStatus(msg) {
-  const sys = document.querySelector('.system-text');
-  if (!sys) return;
-  const orig = sys.innerHTML;
-  sys.innerHTML = '● ' + msg;
-  sys.style.color = '#ffffff';
-  setTimeout(() => {
-    sys.innerHTML = orig;
-    sys.style.color = '#ff4444';
+  const orig = systemText.textContent;
+  systemText.textContent = '● ' + msg;
+  systemText.style.color = '#ffffff';
+  setTimeout(function() {
+    systemText.textContent = orig;
+    systemText.style.color = '#ff4444';
   }, 1500);
 }
 
+document.addEventListener('keydown', function(e) {
+  if (e.ctrlKey && e.key === 'Enter') {
+    e.preventDefault();
+    runPreview();
+  }
+});
+
 updateLines();
+runPreview();
 </script>
 
 </body>
