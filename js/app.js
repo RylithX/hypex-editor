@@ -1,75 +1,143 @@
-(function() {
-    const fs = new FileSystem(); let editor; let autoRunTimer = null; let isFullscreen = false;
-    const els = { projectTabs: document.getElementById('project-tabs'), langTabs: document.getElementById('lang-tabs'), previewFrame: document.getElementById('preview-frame'), previewSection: document.getElementById('preview-section'), importInput: document.getElementById('import-input') };
-    function init() {
-        editor = new EditorManager(fs, handleEditorEvent);
-        const projects = Object.keys(fs.projects);
-        if (projects.length > 0) { fs.currentProject = projects[0]; fs.currentLang = 'mixed'; }
-        renderProjectTabs(); setLangTabActive(fs.currentLang); editor.loadLang(fs.currentProject, fs.currentLang); bindEvents(); runPreview();
+(function(){
+  let currentProject = 'default';
+  let currentTab = 'html5';
+  let projects = [];
+  const els = {
+    html5: document.getElementById('code-html5'),
+    css3: document.getElementById('code-css3'),
+    js: document.getElementById('code-js'),
+    mixed: document.getElementById('code-mixed'),
+    preview: document.getElementById('preview'),
+    projectList: document.getElementById('project-list'),
+    importFile: document.getElementById('import-file')
+  };
+  function key(t,p){ return 'hypex_'+(p||currentProject)+'_'+t; }
+  function loadProjectsList(){
+    const stored = localStorage.getItem('hypex_projects');
+    projects = stored ? JSON.parse(stored) : ['default'];
+    renderProjects();
+  }
+  function saveProjectsList(){ localStorage.setItem('hypex_projects', JSON.stringify(projects)); }
+  function loadProject(name){
+    currentProject = name;
+    els.html5.value = localStorage.getItem(key('html5')) || '';
+    els.css3.value = localStorage.getItem(key('css3')) || '';
+    els.js.value = localStorage.getItem(key('js')) || '';
+    els.mixed.value = localStorage.getItem(key('mixed')) || '';
+    renderProjects();
+    runPreview();
+  }
+  function saveCurrent(){
+    localStorage.setItem(key('html5'), els.html5.value);
+    localStorage.setItem(key('css3'), els.css3.value);
+    localStorage.setItem(key('js'), els.js.value);
+    localStorage.setItem(key('mixed'), els.mixed.value);
+  }
+  function createProject(){
+    const name = prompt('Project name:');
+    if(!name || projects.includes(name)) return alert('Invalid or duplicate name');
+    projects.push(name);
+    saveProjectsList();
+    loadProject(name);
+  }
+  function deleteProject(name){
+    if(!confirm('Delete '+name+'?')) return;
+    projects = projects.filter(p=>p!==name);
+    if(currentProject===name) currentProject = projects[0] || 'default';
+    ['html5','css3','js','mixed'].forEach(t=>localStorage.removeItem('hypex_'+name+'_'+t));
+    saveProjectsList();
+    loadProject(currentProject);
+  }
+  function renderProjects(){
+    els.projectList.innerHTML = '';
+    projects.forEach(p=>{
+      const div = document.createElement('div');
+      div.className = 'project-item'+(p===currentProject?' active':'');
+      div.innerHTML = '<span>'+p+'</span>';
+      const del = document.createElement('button');
+      del.textContent = '×';
+      del.onclick = e=>{ e.stopPropagation(); deleteProject(p); };
+      div.appendChild(del);
+      div.onclick = ()=>loadProject(p);
+      els.projectList.appendChild(div);
+    });
+  }
+  function switchTab(tab){
+    currentTab = tab;
+    document.querySelectorAll('.editor-tabs button').forEach(b=>b.classList.toggle('active', b.dataset.tab===tab));
+    ['html5','css3','js','mixed'].forEach(t=>document.getElementById('code-'+t).style.display = t===tab?'block':'none');
+  }
+  function switchView(view){
+    document.querySelectorAll('.nav-btn').forEach(b=>b.classList.toggle('active', b.dataset.view===view));
+    document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active', v.id===view+'-view'));
+    if(view==='aura'){ if(window.aura && window.aura.start) window.aura.start(); }
+    else { if(window.aura && window.aura.stop) window.aura.stop(); }
+  }
+  function runPreview(){
+    saveCurrent();
+    const mixed = els.mixed.value.trim();
+    let srcdoc;
+    if(mixed){ srcdoc = mixed; }
+    else {
+      srcdoc = `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>${els.css3.value}</style></head><body>${els.html5.value}<script>${els.js.value}<\/script></body></html>`;
     }
-    function handleEditorEvent(type) { if (type === 'save') { if (fs.saveToStorage()) flashStatus('SNAPSHOT SAVED'); } else if (type === 'run') { runPreview(); } else if (type === 'content') { clearTimeout(autoRunTimer); autoRunTimer = setTimeout(runPreview, 1000); } }
-    function bindEvents() {
-        document.getElementById('btn-new-project').addEventListener('click', createNewProject);
-        document.getElementById('btn-save').addEventListener('click', () => { if (fs.saveToStorage()) flashStatus('SNAPSHOT SAVED'); });
-        document.getElementById('btn-export').addEventListener('click', exportCurrentProject);
-        document.getElementById('btn-import').addEventListener('click', () => els.importInput.click());
-        document.getElementById('btn-run').addEventListener('click', runPreview);
-        document.getElementById('btn-fullscreen').addEventListener('click', toggleFullscreen);
-        els.importInput.addEventListener('change', handleImport);
-        els.langTabs.querySelectorAll('.lang-tab').forEach(tab => {
-            tab.addEventListener('click', () => { const lang = tab.dataset.lang; fs.currentLang = lang; setLangTabActive(lang); editor.loadLang(fs.currentProject, lang); runPreview(); });
+    els.preview.srcdoc = srcdoc;
+  }
+  function fullscreenPreview(){ els.preview.requestFullscreen(); }
+  function exportJSON(){
+    const data = {};
+    projects.forEach(p=>{
+      data[p] = { html5:localStorage.getItem('hypex_'+p+'_html5')||'', css3:localStorage.getItem('hypex_'+p+'_css3')||'', js:localStorage.getItem('hypex_'+p+'_js')||'', mixed:localStorage.getItem('hypex_'+p+'_mixed')||'' };
+    });
+    const blob = new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'hypex-backup.json';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+  function importJSON(file){
+    const reader = new FileReader();
+    reader.onload = ()=>{
+      try{
+        const data = JSON.parse(reader.result);
+        Object.keys(data).forEach(p=>{
+          if(!projects.includes(p)) projects.push(p);
+          ['html5','css3','js','mixed'].forEach(t=>localStorage.setItem('hypex_'+p+'_'+t, data[p][t]||''));
         });
-    }
-    function toggleFullscreen() {
-        isFullscreen = !isFullscreen;
-        els.previewSection.classList.toggle('fullscreen', isFullscreen);
-        document.getElementById('btn-fullscreen').textContent = isFullscreen ? '⛶ EXIT' : '⛶ FULLSCREEN';
-    }
-    function renderProjectTabs() {
-        els.projectTabs.innerHTML = '';
-        Object.keys(fs.projects).forEach(name => {
-            const isActive = fs.currentProject === name;
-            const tab = document.createElement('div'); tab.className = `project-tab ${isActive ? 'active' : ''}`;
-            tab.innerHTML = `<span>${escapeHtml(name)}</span><span class="project-tab-close" data-name="${escapeHtml(name)}">×</span>`;
-            tab.addEventListener('click', (e) => { if (e.target.classList.contains('project-tab-close')) return; fs.currentProject = name; renderProjectTabs(); editor.loadLang(fs.currentProject, fs.currentLang); runPreview(); });
-            tab.querySelector('.project-tab-close').addEventListener('click', () => { if (confirm(`Close "${name}"?`)) { fs.deleteProject(name); renderProjectTabs(); editor.loadLang(fs.currentProject, fs.currentLang); runPreview(); } });
-            els.projectTabs.appendChild(tab);
-        });
-    }
-    function setLangTabActive(lang) { els.langTabs.querySelectorAll('.lang-tab').forEach(t => { t.classList.toggle('active', t.dataset.lang === lang); }); }
-    function createNewProject() { const name = prompt('Enter new project name:'); if (!name) return; if (fs.createProject(name)) { fs.currentProject = name; fs.currentLang = 'mixed'; renderProjectTabs(); setLangTabActive('mixed'); editor.loadLang(name, 'mixed'); runPreview(); } else { alert('Project already exists or name invalid!'); } }    function runPreview() {
-        if (!fs.currentProject) { els.previewFrame.srcdoc = '<p style="color:red;padding:20px;">No active project</p>'; return; }
-        const consoleOut = document.getElementById('console-out');
-        const frame = els.previewFrame;
-
-        if (fs.currentLang === 'mixed') {
-            if (consoleOut) consoleOut.style.display = 'none';
-            frame.style.display = 'block';
-            frame.srcdoc = fs.projects[fs.currentProject].mixed || '';
-            return;
-        }
-
-        frame.style.display = 'none';
-        if (consoleOut) consoleOut.style.display = 'block';
-
-        const src = editor.getValue();
-        if (fs.currentLang === 'python') {
-            HXEngines.initPython().then(() => {
-                if (consoleOut) consoleOut.textContent = HXEngines.runPython(src);
-            });
-        } else if (fs.currentLang === 'cpp') {
-            if (consoleOut) consoleOut.textContent = HXEngines.runCPP(src);
-        } else if (fs.currentLang === 'rust') {
-            HXEngines.runRust(src).then(out => {
-                if (consoleOut) consoleOut.textContent = out;
-            });
-        } else {
-            if (consoleOut) consoleOut.textContent = 'Unknown language: ' + fs.currentLang;
-        }
-    }
-    function exportCurrentProject() { if (!fs.currentProject) { alert('No project selected'); return; } const data = fs.exportProject(fs.currentProject); if (!data) return; const blob = new Blob([data], { type: 'application/json' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `${fs.currentProject}-hypex.json`; document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url); flashStatus('EXPORTED .JSON'); }
-    function handleImport(e) { const file = e.target.files[0]; if (!file) return; const reader = new FileReader(); reader.onload = (event) => { const importedName = fs.importProject(event.target.result); if (importedName) { fs.currentProject = importedName; fs.currentLang = 'mixed'; renderProjectTabs(); setLangTabActive('mixed'); editor.loadLang(importedName, 'mixed'); runPreview(); flashStatus('IMPORTED .JSON'); } else { alert('Invalid JSON format'); } }; reader.readAsText(file); e.target.value = ''; }
-    function flashStatus(msg) { const status = document.querySelector('.system-title'); const original = status.textContent; status.textContent = msg; status.style.color = '#00ff88'; setTimeout(() => { status.textContent = original; status.style.color = '#ff0033'; }, 2000); }
-    function escapeHtml(text) { const div = document.createElement('div'); div.textContent = text; return div.innerHTML; }
-    init();
+        saveProjectsList();
+        loadProject(Object.keys(data)[0] || currentProject);
+        alert('Import successful');
+      }catch(e){ alert('Invalid JSON'); }
+    };
+    reader.readAsText(file);
+  }
+  function initLogoGlitch(){
+    const letters = document.querySelectorAll('.logo-letter');
+    setInterval(()=>{
+      const t = Date.now() % 12000;
+      if((t<<5000)||(t>6000 && t<<11000)){
+        const l = letters[Math.floor(Math.random()*letters.length)];
+        l.style.textShadow = (Math.random()>0.5?'2px 0 #fff, -2px 0 #ff0033':'-2px 0 #fff, 2px 0 #ff0033');
+        l.style.transform = `translate(${Math.random()*6-3}px,${Math.random()*4-2}px)`;
+        l.style.color = '#fff';
+        setTimeout(()=>{ l.style.textShadow=''; l.style.transform=''; l.style.color=''; }, 60+Math.random()*100);
+      }
+    }, 120);
+  }
+  document.addEventListener('DOMContentLoaded', ()=>{
+    loadProjectsList();
+    loadProject(currentProject);
+    document.querySelectorAll('.editor-tabs button').forEach(b=>b.addEventListener('click',()=>switchTab(b.dataset.tab)));
+    document.querySelectorAll('.nav-btn').forEach(b=>b.addEventListener('click',()=>switchView(b.dataset.view)));
+    document.getElementById('btn-run').addEventListener('click', runPreview);
+    document.getElementById('btn-fullscreen').addEventListener('click', fullscreenPreview);
+    document.getElementById('btn-new-project').addEventListener('click', createProject);
+    document.getElementById('btn-export').addEventListener('click', exportJSON);
+    document.getElementById('btn-import').addEventListener('click', ()=>els.importFile.click());
+    els.importFile.addEventListener('change', e=>{ if(e.target.files[0]) importJSON(e.target.files[0]); });
+    ['html5','css3','js','mixed'].forEach(t=>document.getElementById('code-'+t).addEventListener('input', saveCurrent));
+    initLogoGlitch();
+    runPreview();
+  });
 })();
