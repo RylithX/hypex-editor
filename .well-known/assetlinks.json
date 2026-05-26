@@ -3,6 +3,6 @@
   "target": {
     "namespace": "android_app",
     "package_name": "com.rylithx.hypex",
-    "sha256_cert_fingerprints": ["PASTE_YOUR_SHA256_HERE_NO_COLONS"]
+    "sha256_cert_fingerprints": ["8D5EF8016058FD865299BD6792922BEE375AD3E004ADE440B576B7A4D6765AA5"]
   }
 }]
