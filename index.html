@@ -3,8 +3,6 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="manifest" href="/manifest.json">
-  <meta name="theme-color" content="#ff0000">
 <title>Hype-X // Code Playground</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -378,11 +376,10 @@ if (typeof THREE === 'undefined') {
   document.head.appendChild(s);
 }
 </script>
-<link rel="icon" type="image/png" href="/favicon.png">
 </head>
 <body>
 
-<canvas id="matrix"></canvas>
+<<canvas id="matrix"></canvas>
 
 <div id="app">
   <div class="top-bar">
@@ -656,17 +653,9 @@ function runPreview() {
   const css = localStorage.getItem('hypex_css3') || '';
   const js = localStorage.getItem('hypex_js') || '';
   
-  const safeJS = js.replace(/<\/script>/gi, '<\\/script>');
+  const safeJS = js.replace(/<<\/script>/gi, '<\\/script>');
   
-  const doc = '<!DOCTYPE html>\n<html lang="en">\n<head>\n<meta charset="UTF-8">\n<style>\n' + css + '\n</style>\n<link rel="icon" type="image/png" href="/favicon.png">
-</head>\n<body>\n' + html + '\n<script>\n(function(){\n  try {\n    ' + safeJS + '\n  } catch(err) {\n    console.error(err);\n    var pre = document.createElement("pre");\n    pre.style.cssText = "color:#f44336;font-family:monospace;padding:12px;background:rgba(20,0,0,0.9);border:1px solid #330000;";\n    pre.textContent = "JS Runtime Error: " + err.message + "\\n" + (err.stack || "");\n    if(document.body) document.body.appendChild(pre);\n  }\n})();\n<\/script>\n<script>
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/sw.js')
-      .then(reg => console.log('SW registered'))
-      .catch(err => console.log('SW failed', err));
-  }
-</script>
-</body>\n</html>';
+  const doc = '<!DOCTYPE html>\n<html lang="en">\n<head>\n<meta charset="UTF-8">\n<style>\n' + css + '\n</style>\n</head>\n<body>\n' + html + '\n<script>\n(function(){\n  try {\n    ' + safeJS + '\n  } catch(err) {\n    console.error(err);\n    var pre = document.createElement("pre");\n    pre.style.cssText = "color:#f44336;font-family:monospace;padding:12px;background:rgba(20,0,0,0.9);border:1px solid #330000;";\n    pre.textContent = "JS Runtime Error: " + err.message + "\\n" + (err.stack || "");\n    if(document.body) document.body.appendChild(pre);\n  }\n})();\n<<\/script>\n</body>\n</html>';
   
   preview.srcdoc = doc;
   flashStatus('COMBINED PREVIEW LIVE');
@@ -974,5 +963,6 @@ document.getElementById('audio-file').addEventListener('change', function(e){
 updateLines();
 runPreview();
 </script>
+
 </body>
 </html>
