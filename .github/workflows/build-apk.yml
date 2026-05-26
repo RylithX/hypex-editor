@@ -1,0 +1,21 @@
+name: Build TWA APK
+on:
+  push:
+    branches: [main]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - name: Build APK
+        working-directory: ./hypex-twa
+        run: ./gradlew assembleRelease
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hypex-apk
+          path: hypex-twa/app/build/outputs/apk/release/*.apk
