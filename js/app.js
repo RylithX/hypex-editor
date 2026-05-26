@@ -116,7 +116,7 @@
     const letters = document.querySelectorAll('.logo-letter');
     setInterval(()=>{
       const t = Date.now() % 12000;
-      if((t<<5000)||(t>6000 && t<<11000)){
+      if((t<5000)||(t>6000 && t<11000)){
         const l = letters[Math.floor(Math.random()*letters.length)];
         l.style.textShadow = (Math.random()>0.5?'2px 0 #fff, -2px 0 #ff0033':'-2px 0 #fff, 2px 0 #ff0033');
         l.style.transform = `translate(${Math.random()*6-3}px,${Math.random()*4-2}px)`;

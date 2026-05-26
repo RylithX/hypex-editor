@@ -379,7 +379,7 @@ if (typeof THREE === 'undefined') {
 </head>
 <body>
 
-<<canvas id="matrix"></canvas>
+<canvas id="matrix"></canvas>
 
 <div id="app">
   <div class="top-bar">
@@ -653,9 +653,9 @@ function runPreview() {
   const css = localStorage.getItem('hypex_css3') || '';
   const js = localStorage.getItem('hypex_js') || '';
   
-  const safeJS = js.replace(/<<\/script>/gi, '<\\/script>');
+  const safeJS = js.replace(/<\/script>/gi, '<\\/script>');
   
-  const doc = '<!DOCTYPE html>\n<html lang="en">\n<head>\n<meta charset="UTF-8">\n<style>\n' + css + '\n</style>\n</head>\n<body>\n' + html + '\n<script>\n(function(){\n  try {\n    ' + safeJS + '\n  } catch(err) {\n    console.error(err);\n    var pre = document.createElement("pre");\n    pre.style.cssText = "color:#f44336;font-family:monospace;padding:12px;background:rgba(20,0,0,0.9);border:1px solid #330000;";\n    pre.textContent = "JS Runtime Error: " + err.message + "\\n" + (err.stack || "");\n    if(document.body) document.body.appendChild(pre);\n  }\n})();\n<<\/script>\n</body>\n</html>';
+  const doc = '<!DOCTYPE html>\n<html lang="en">\n<head>\n<meta charset="UTF-8">\n<style>\n' + css + '\n</style>\n</head>\n<body>\n' + html + '\n<script>\n(function(){\n  try {\n    ' + safeJS + '\n  } catch(err) {\n    console.error(err);\n    var pre = document.createElement("pre");\n    pre.style.cssText = "color:#f44336;font-family:monospace;padding:12px;background:rgba(20,0,0,0.9);border:1px solid #330000;";\n    pre.textContent = "JS Runtime Error: " + err.message + "\\n" + (err.stack || "");\n    if(document.body) document.body.appendChild(pre);\n  }\n})();\n<\/script>\n</body>\n</html>';
   
   preview.srcdoc = doc;
   flashStatus('COMBINED PREVIEW LIVE');
